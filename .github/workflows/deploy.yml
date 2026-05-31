@@ -1,0 +1,60 @@
+name: Deploy Markdown to GitHub Pages
+
+on:
+  push:
+    branches: ["main"] # mainブランチにプッシュされたら起動
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps: deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Pandoc
+        run: sudo apt-get update && sudo apt-get install -y pandoc
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      # mdをhtmlに変換！
+      - name: Build HTML with Footer
+        run: |
+          mkdir public
+          
+          # リポジトリ内のすべての .md ファイルをループ処理
+          for file in *.md; do
+            # ファイルが存在する場合のみ処理
+            [ -e "$file" ] || continue
+            
+            # 拡張子を .html に変更した出力ファイル名を定義
+            filename=$(basename "$file" .md)
+            
+            echo "Processing $file -> public/$filename.html"
+            
+            pandoc "$file" -s -o "public/$filename.html"
+            
+            # 生成されたHTMLの </body> 直前（または末尾）にフッターを挿入
+            cat footer.html >> "public/$filename.html"
+          done
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './public'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
