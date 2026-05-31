@@ -1,0 +1,2 @@
+# DieShaGuide
+DieShaに関するガイド
